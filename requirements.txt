@@ -1,0 +1,1 @@
+python-telegram-bot==20.5   # ไลบรารีหลักสำหรับสร้างบอท Telegram (async + ConversationHandler + InlineKeyboard)
