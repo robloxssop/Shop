@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder,  # <-- แก้ไขตรงนี้
+    ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -9,10 +9,9 @@ from telegram.ext import (
 )
 
 TELEGRAM_LINK = "https://t.me/@Hackingshop01"
-TOKEN = "7520144934:AAFJgTFlL7x4zeqSM4XiKtsVdLW31TEZPGo" # เปลี่ยนเป็น Token ของคุณ
+TOKEN = "YOUR_BOT_API_TOKEN"  # <<== ใส่ token จริงตรงนี้
 CHOOSING = 1
 
-# ข้อมูลโปร (เติมข้อความรายละเอียดแล้ว)
 PRO_DATA = {
     "rov_ios": """🛒 โปร ROV IOS FLASH SHOP‼️🎮
 ❗️สําหรับ IOS กันรีพอร์ต+แบน
@@ -239,7 +238,7 @@ PRO_DATA = {
     "pubg_ad": "ยังไม่มี",
 }
 
-# start command
+# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -264,9 +263,7 @@ async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(PRO_DATA[key])
         return ConversationHandler.END
     else:
-        await update.message.reply_text(
-            "ยังไม่มีข้อความโปรสำหรับตัวเลือกนี้ หรือพิมพ์ 'IOS' / 'AD' เท่านั้น"
-        )
+        await update.message.reply_text("ยังไม่มีข้อความโปร หรือพิมพ์แค่ 'IOS' / 'AD'")
         return CHOOSING
 
 def main():
@@ -277,8 +274,12 @@ def main():
 
     # ConversationHandler สำหรับเลือกโปร
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^(rov|ฟีฟาย|pubg)$", flags=0 | 0), start_choice)],
-        states={CHOOSING: [MessageHandler(filters.Regex("^(ios|ad)$", flags=0 | 0), choose_platform)]},
+        entry_points=[MessageHandler(filters.Regex("^(rov|ฟีฟาย|pubg)$", casefold=True), start_choice)],
+        states={
+            CHOOSING: [
+                MessageHandler(filters.Regex("^(ios|ad)$", casefold=True), choose_platform)
+            ]
+        },
         fallbacks=[],
     )
     app.add_handler(conv_handler)
@@ -287,4 +288,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
