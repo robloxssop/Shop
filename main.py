@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application,
+    ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -9,12 +9,10 @@ from telegram.ext import (
 )
 
 TELEGRAM_LINK = "https://t.me/@Hackingshop01"
-TOKEN = "7520144934:AAFJgTFlL7x4zeqSM4XiKtsVdLW31TEZPGo"
-
-# สถานะ Conversation
+TOKEN = "YOUR_BOT_API_TOKEN" # ใส่ Token Bot API ของคุณที่นี่
 CHOOSING = 1
 
-# ข้อมูลโปร (เว้นว่างไว้ ให้คุณใส่เอง)
+# ข้อมูลโปร (เติมข้อความรายละเอียดแล้ว)
 PRO_DATA = {
     "rov_ios": """🛒 โปร ROV IOS FLASH SHOP‼️🎮
 ❗️สําหรับ IOS กันรีพอร์ต+แบน
@@ -250,7 +248,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup,
     )
 
-
 # เริ่มเลือกโปร
 async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.lower()
@@ -258,12 +255,10 @@ async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("คุณใช้แพลตฟอร์มอะไร? พิมพ์ 'IOS' หรือ 'AD'")
     return CHOOSING
 
-
 # เลือกแพลตฟอร์ม
 async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
     platform = update.message.text.lower()
     game = context.user_data.get("game", "")
-
     key = f"{game}_{platform}"
     if key in PRO_DATA and PRO_DATA[key]:
         await update.message.reply_text(PRO_DATA[key])
@@ -274,30 +269,21 @@ async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return CHOOSING
 
-
 def main():
-    """Start the bot."""
-    # สร้าง Application และส่ง Token ให้กับบอท
-    app = Application.builder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    # เพิ่ม CommandHandler สำหรับคำสั่ง /start
+    # /start handler
     app.add_handler(CommandHandler("start", start))
 
-    # เพิ่ม ConversationHandler
+    # ConversationHandler สำหรับเลือกโปร
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^(ฟีฟาย|rov|pubg)$"), start_choice)],
-        states={
-            CHOOSING: [
-                MessageHandler(filters.Regex("^(ios|ad)$"), choose_platform),
-            ],
-        },
+        entry_points=[MessageHandler(filters.Regex("^(rov|ฟีฟาย|pubg)$", flags=0 | 0), start_choice)],
+        states={CHOOSING: [MessageHandler(filters.Regex("^(ios|ad)$", flags=0 | 0), choose_platform)]},
         fallbacks=[],
     )
     app.add_handler(conv_handler)
 
-    # รันบอทในโหมด polling เพื่อรับข้อความจาก Telegram
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
-
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
