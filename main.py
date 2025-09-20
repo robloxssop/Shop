@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder,
+    ApplicationBuilder,  # <-- แก้ไขตรงนี้
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 TELEGRAM_LINK = "https://t.me/@Hackingshop01"
-TOKEN = "YOUR_BOT_API_TOKEN" # ใส่ Token Bot API ของคุณที่นี่
+TOKEN = "7520144934:AAFJgTFlL7x4zeqSM4XiKtsVdLW31TEZPGo" # เปลี่ยนเป็น Token ของคุณ
 CHOOSING = 1
 
 # ข้อมูลโปร (เติมข้อความรายละเอียดแล้ว)
@@ -17,7 +17,7 @@ PRO_DATA = {
     "rov_ios": """🛒 โปร ROV IOS FLASH SHOP‼️🎮
 ❗️สําหรับ IOS กันรีพอร์ต+แบน
 [+] กันโดนแบน 1ปี และ 1เดือน !
-[+] ใช้งานง่าย มีฟังก์ชั่นเยอะ !
+[+] ใช้งานง่าย มีฟังก์ชันเยอะ !
 [+] กันรีพอร์ทใช้ได้จริง100%🛡️
 [+] ลงผ่าน  Esign / GBOX !
 [+] ไม่ต้องลบตัวเกมออก
@@ -287,3 +287,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
