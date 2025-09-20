@@ -1,8 +1,16 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
-TELEGRAM_LINK = "https://t.me/@Hackingshop01"  # แก้เป็น Telegram ของคุณ
+TELEGRAM_LINK = "https://t.me/@Hackingshop01"
 TOKEN = "7520144934:AAFJgTFlL7x4zeqSM4XiKtsVdLW31TEZPGo"
+
 # สถานะ Conversation
 CHOOSING = 1
 
@@ -230,19 +238,18 @@ PRO_DATA = {
 ▪️ วิ่งไว
 ▪️ใช้ได้ยาวๆหนาๆ""",
     "pubg_ios": "ยังไม่มี",
-    "pubg_ad": "ยังไม่มี"
+    "pubg_ad": "ยังไม่มี",
 }
 
 # start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]
-    ]
+    keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         "สวัสดีครับ! หากต้องการสั่งซื้อ โปรดกดปุ่มด้านล่างเพื่อไป Telegram ของผม:",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
+
 
 # เริ่มเลือกโปร
 async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -250,6 +257,7 @@ async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["game"] = text
     await update.message.reply_text("คุณใช้แพลตฟอร์มอะไร? พิมพ์ 'IOS' หรือ 'AD'")
     return CHOOSING
+
 
 # เลือกแพลตฟอร์ม
 async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -261,28 +269,29 @@ async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(PRO_DATA[key])
         return ConversationHandler.END
     else:
-        await update.message.reply_text("ยังไม่มีข้อความโปรสำหรับตัวเลือกนี้ หรือพิมพ์ 'IOS' / 'AD' เท่านั้น")
+        await update.message.reply_text(
+            "ยังไม่มีข้อความโปรสำหรับตัวเลือกนี้ หรือพิมพ์ 'IOS' / 'AD' เท่านั้น"
+        )
         return CHOOSING
+
 
 def main():
     """Start the bot."""
     # สร้าง Application และส่ง Token ให้กับบอท
     app = Application.builder().token(TOKEN).build()
 
-    # เพิ่ม CommandHandler สำหรับคำสั่ง /start และ ConversationHandler
+    # เพิ่ม CommandHandler สำหรับคำสั่ง /start
     app.add_handler(CommandHandler("start", start))
-    
+
     # เพิ่ม ConversationHandler
     conv_handler = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex("^(ฟีฟาย|rov|pubg)$"), start_choice)
-        ],
+        entry_points=[MessageHandler(filters.Regex("^(ฟีฟาย|rov|pubg)$"), start_choice)],
         states={
             CHOOSING: [
                 MessageHandler(filters.Regex("^(ios|ad)$"), choose_platform),
             ],
         },
-        fallbacks=[]
+        fallbacks=[],
     )
     app.add_handler(conv_handler)
 
@@ -292,4 +301,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
