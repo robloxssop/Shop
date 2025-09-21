@@ -1,5 +1,6 @@
 import os
 import re
+import imghdr_py as imghdr
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
