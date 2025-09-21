@@ -1,27 +1,24 @@
 import os
 import re
-import imghdr
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder,
+    Updater,
     CommandHandler,
-    ConversationHandler,
     MessageHandler,
-    ContextTypes,
-    filters,
+    CallbackContext,
+    CallbackQueryHandler,
+    Filters,
 )
 
-# --- CONFIGURATION ---
+# --- CONFIG ---
 TELEGRAM_LINK = "https://t.me/Hackingshop01"
-TOKEN = os.environ.get("TOKEN")
 
-# ตั้งค่า Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# สถานะของ ConversationHandler
-CHOOSING = 1
+# ตั้งค่า logging เพื่อดูการทำงานของบอท
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
 # --- PRODUCT DATA ---
 PRO_DATA = {
@@ -251,83 +248,73 @@ PRO_DATA = {
 }
 
 # --- HANDLERS ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /start command."""
-    keyboard = [[InlineKeyboardButton("ติดต่อ Telegram", url=TELEGRAM_LINK)]]
-    await update.message.reply_text(
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text(
         "สวัสดีครับ! 👋\n"
-        "พิมพ์ 'rov', 'ฟีฟาย' หรือ 'pubg' เพื่อดูโปร\n"
-        "หรือกดปุ่มข้างล่างเพื่อสั่งซื้อ:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        "พิมพ์ชื่อเกมที่ต้องการดูโปร เช่น 'rov', 'ฟีฟาย', 'pubg'"
     )
-    return ConversationHandler.END
 
-async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Starts the conversation and prompts for the platform."""
-    text = update.message.text.strip().lower()
-    if text == "ff":
-        text = "ฟีฟาย"
-    if text not in ("rov", "ฟีฟาย", "pubg"):
-        await update.message.reply_text("พิมพ์แค่ rov, ฟีฟาย หรือ pubg เท่านั้นครับ")
-        return ConversationHandler.END
-
-    context.user_data["game"] = text
-    await update.message.reply_text("คุณใช้แพลตฟอร์มอะไร? (พิมพ์ IOS หรือ AD)")
-    return CHOOSING
-
-async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Checks the platform and sends the product details."""
-    platform = update.message.text.strip().lower()
-    if platform not in ("ios", "ad"):
-        await update.message.reply_text("กรุณาพิมพ์ IOS หรือ AD เท่านั้น")
-        return CHOOSING
-
-    game = context.user_data.get("game", "")
-    key = f"{game}_{platform}"
+def handle_message(update: Update, context: CallbackContext):
+    text = update.message.text.lower()
+    game_found = None
+    if "rov" in text:
+        game_found = "rov"
+    elif "ฟีฟาย" in text or "ff" in text:
+        game_found = "ฟีฟาย"
+    elif "pubg" in text:
+        game_found = "pubg"
     
-    if key in PRO_DATA and PRO_DATA[key]:
-        await update.message.reply_text(PRO_DATA[key])
+    if game_found:
+        ask_device(update, game_found)
     else:
-        await update.message.reply_text("ยังไม่มีโปรสำหรับตัวเลือกนี้")
+        update.message.reply_text("ขอโทษครับ ไม่พบข้อมูลโปรของเกมนี้")
 
-    keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
-    await update.message.reply_text(
-        "กดปุ่มด้านล่างเพื่อติดต่อสั่งซื้อ:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+def ask_device(update: Update, game_name: str):
+    keyboard = [
+        [
+            InlineKeyboardButton("AD (Android)", callback_data=f"{game_name}_ad"),
+            InlineKeyboardButton("IOS", callback_data=f"{game_name}_ios")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text(
+        f"คุณต้องการโปรสำหรับ AD หรือ IOS?",
+        reply_markup=reply_markup
     )
-    return ConversationHandler.END
 
-async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles unknown messages."""
-    await update.message.reply_text("พิมพ์ rov / ฟีฟาย / pubg เพื่อเริ่มครับ")
-    return ConversationHandler.END
+def button(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    key = query.data
 
-# --- MAIN ---
+    if key in PRO_DATA:
+        query.message.reply_text(PRO_DATA[key])
+    else:
+        query.message.reply_text("ไม่พบข้อมูล")
+
+    # เพิ่มปุ่มติดต่อหลังจากแสดงข้อมูล
+    contact_keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
+    query.message.reply_text(
+        "สนใจสั่งซื้อโปรแกรม ติดต่อได้ที่:",
+        reply_markup=InlineKeyboardMarkup(contact_keyboard)
+    )
+
 def main():
+    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
-        logger.error("⚠️ Set TOKEN env var first!")
+        logging.error("กรุณาตั้ง Environment Variable ชื่อ TELEGRAM_BOT_TOKEN ก่อนรันบอท")
         return
 
-    # Use ApplicationBuilder for modern bot development
-    app = ApplicationBuilder().token(TOKEN).build()
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
 
-    conv_handler = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex(re.compile(r"^(rov|ฟีฟาย|pubg|ff)$", re.IGNORECASE)), start_choice)
-        ],
-        states={
-            CHOOSING: [
-                MessageHandler(filters.Regex(re.compile(r"^(ios|ad)$", re.IGNORECASE)), choose_platform)
-            ]
-        },
-        fallbacks=[MessageHandler(filters.ALL, unknown)],
-    )
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    dp.add_handler(CallbackQueryHandler(button))
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(conv_handler)
-    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, unknown))
-
-    app.run_polling()
+    updater.start_polling()
+    logging.info("บอทเริ่มทำงานแล้ว...")
+    updater.idle()
 
 if __name__ == "__main__":
     main()
