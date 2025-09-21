@@ -1,24 +1,32 @@
 import os
 import re
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    MessageHandler,
-    CallbackContext,
-    CallbackQueryHandler,
-    Filters,
-)
+from pyrogram import Client, filters
+from dotenv import load_dotenv
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- CONFIG ---
-TELEGRAM_LINK = "https://t.me/Hackingshop01"
+# โหลด Environment Variable
+load_dotenv()
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+API_ID = os.getenv("API_ID")
+API_HASH = os.getenv("API_HASH")
 
-# ตั้งค่า logging เพื่อดูการทำงานของบอท
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+# ตรวจสอบค่าที่จำเป็น
+if not all([BOT_TOKEN, API_ID, API_HASH]):
+    raise ValueError("⚠️ Please set TELEGRAM_BOT_TOKEN, API_ID, and API_HASH environment variables.")
+
+# แปลง API_ID ให้เป็น integer
+try:
+    API_ID = int(API_ID)
+except (ValueError, TypeError):
+    raise ValueError("⚠️ API_ID must be a valid integer.")
+
+# ตั้งค่า Pyrogram client
+app = Client("my_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
+
+# ตั้งค่า Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # --- PRODUCT DATA ---
 PRO_DATA = {
@@ -224,8 +232,7 @@ PRO_DATA = {
 [+] Ghost Hack - ถอดจิต
 [+] ESP - มองทะลุต่าง ๆ
 ✅ รองรับ Android 64 bit ทุกรุ่น
-✅ ไม่ต้องซื้ออะไรเพิ่ม / ไม่ต้องรูทเครื่อง
-✅ สับปืน วิ่งเร็ว ดึงคน ถอดจิต มองทะลุ
+✅ ไม่ต้องซื้ออะไรเพิ่ม / ไม่ต้องรูทเครื่อง ✅ สับปืน วิ่งเร็ว ดึงคน ถอดจิต มองทะลุ
 ------------------------------
 โปรค่าย 𝗕𝗿-𝗠𝗼𝗱𝘀-𝗔𝗗-𝗥o̶ot(รูท)
 สามารถใช้แอพจำลองได้ได้แค่แอพที่สามารถรูทได้เท่านั้น
@@ -248,73 +255,43 @@ PRO_DATA = {
 }
 
 # --- HANDLERS ---
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text(
-        "สวัสดีครับ! 👋\n"
-        "พิมพ์ชื่อเกมที่ต้องการดูโปร เช่น 'rov', 'ฟีฟาย', 'pubg'"
-    )
-
-def handle_message(update: Update, context: CallbackContext):
-    text = update.message.text.lower()
-    game_found = None
+@app.on_message(filters.text & ~filters.command)
+async def reply_pro(client, message):
+    text = message.text.lower()
     if "rov" in text:
-        game_found = "rov"
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("AD", callback_data="rov_ad"),
+                    InlineKeyboardButton("IOS", callback_data="rov_ios"),
+                ]
+            ]
+        )
+        await message.reply_text("คุณต้องการโปรสำหรับ AD หรือ IOS?", reply_markup=keyboard)
     elif "ฟีฟาย" in text or "ff" in text:
-        game_found = "ฟีฟาย"
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("AD", callback_data="ฟีฟาย_ad"),
+                    InlineKeyboardButton("IOS", callback_data="ฟีฟาย_ios"),
+                ]
+            ]
+        )
+        await message.reply_text("คุณต้องการโปรสำหรับ AD หรือ IOS?", reply_markup=keyboard)
     elif "pubg" in text:
-        game_found = "pubg"
-    
-    if game_found:
-        ask_device(update, game_found)
+        await message.reply_text("ขออภัยครับ ยังไม่มีโปรสำหรับ PUBG")
     else:
-        update.message.reply_text("ขอโทษครับ ไม่พบข้อมูลโปรของเกมนี้")
+        await message.reply_text("ไม่พบข้อมูลโปรเกมนี้")
 
-def ask_device(update: Update, game_name: str):
-    keyboard = [
-        [
-            InlineKeyboardButton("AD (Android)", callback_data=f"{game_name}_ad"),
-            InlineKeyboardButton("IOS", callback_data=f"{game_name}_ios")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text(
-        f"คุณต้องการโปรสำหรับ AD หรือ IOS?",
-        reply_markup=reply_markup
-    )
-
-def button(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    key = query.data
-
+@app.on_callback_query()
+async def callback_handler(client, callback_query):
+    key = callback_query.data
     if key in PRO_DATA:
-        query.message.reply_text(PRO_DATA[key])
+        await callback_query.message.reply_text(PRO_DATA[key])
     else:
-        query.message.reply_text("ไม่พบข้อมูล")
+        await callback_query.message.reply_text("ไม่พบข้อมูล")
 
-    # เพิ่มปุ่มติดต่อหลังจากแสดงข้อมูล
-    contact_keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
-    query.message.reply_text(
-        "สนใจสั่งซื้อโปรแกรม ติดต่อได้ที่:",
-        reply_markup=InlineKeyboardMarkup(contact_keyboard)
-    )
-
-def main():
-    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not TOKEN:
-        logging.error("กรุณาตั้ง Environment Variable ชื่อ TELEGRAM_BOT_TOKEN ก่อนรันบอท")
-        return
-
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-    dp.add_handler(CallbackQueryHandler(button))
-
-    updater.start_polling()
-    logging.info("บอทเริ่มทำงานแล้ว...")
-    updater.idle()
-
+# รันบอท
 if __name__ == "__main__":
-    main()
+    logger.info("Bot is starting...")
+    app.run()
