@@ -1,21 +1,25 @@
+import os
 import re
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ContextTypes,
     ConversationHandler,
     MessageHandler,
+    ContextTypes,
     filters,
 )
 
-# ---- CONFIG ----
+# ---------- CONFIG ----------
 TELEGRAM_LINK = "https://t.me/Hackingshop01"
-TOKEN = "Y7520144934:AAFJgTFlL7x4zeqSM4XiKtsVdLW31TEZPGo"  # <-- ใส่ Bot Token จริง (อย่าโพสต์สาธารณะ)
+TOKEN = os.environ.get("TOKEN")
 CHOOSING = 1
 
-# ---- DATA (ใส่ข้อความโปรได้ตามต้องการ) ----
+if not TOKEN:
+    raise RuntimeError("TOKEN environment variable is not set. Set TOKEN in your environment.")
+
+# ---------- DATA (ใส่ข้อความโปรตามต้องการ) ----------
 PRO_DATA = {
     "rov_ios": """🛒 โปร ROV IOS FLASH SHOP‼️🎮
 ❗️สําหรับ IOS กันรีพอร์ต+แบน
@@ -242,7 +246,7 @@ PRO_DATA = {
     "pubg_ad": "ยังไม่มี",
 }
 
-# ---- Logging ----
+# ---------- Logging ----------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -251,51 +255,63 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "สวัสดีครับ! หากต้องการสั่งซื้อ โปรดกดปุ่มด้านล่างหรือพิมพ์ 'rov', 'ฟีฟาย' หรือ 'pubg' เพื่อเลือกโปร:",
+        "สวัสดีครับ! พิมพ์คำว่า 'rov', 'ฟีฟาย' หรือ 'pubg' เพื่อดูโปร หรือกดปุ่มด้านล่างเพื่อไป Telegram ของผม:",
         reply_markup=reply_markup,
     )
 
-# เริ่มเลือกโปร (trigger เมื่อพิมพ์ rov / ฟีฟาย / pubg)
+# เริ่มเลือกโปร (เมื่อพิมพ์ rov / ฟีฟาย / pubg)
 async def start_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip().lower()
-    # เนื่องจากใช้ re.IGNORECASE แล้ว เราสามารถ .lower() ได้เลย
-    context.user_data["game"] = text 
+    text = update.message.text.strip()
+    normalized = text.lower()
+    if normalized == "ff":
+        normalized = "ฟีฟาย"
+    context.user_data["game"] = normalized
     await update.message.reply_text("คุณใช้แพลตฟอร์มอะไร? พิมพ์ 'IOS' หรือ 'AD'")
     return CHOOSING
 
-# เลือกแพลตฟอร์ม (ios / ad)
+# เลือกแพลตฟอร์ม (ios/ad)
 async def choose_platform(update: Update, context: ContextTypes.DEFAULT_TYPE):
     platform = update.message.text.strip().lower()
     game = context.user_data.get("game", "").strip()
+    if platform not in ("ios", "ad"):
+        await update.message.reply_text("กรุณาพิมพ์ 'IOS' หรือ 'AD' เท่านั้น")
+        return CHOOSING
+
     key = f"{game}_{platform}"
+    key = key.strip()
+
     if key in PRO_DATA and PRO_DATA[key]:
         await update.message.reply_text(PRO_DATA[key])
         keyboard = [[InlineKeyboardButton("ติดต่อ Telegram เพื่อสั่งซื้อ", url=TELEGRAM_LINK)]]
-        await update.message.reply_text("ต้องการติดต่อเพื่อสั่งซื้อ? กดปุ่มด้านล่าง:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text("ต้องการสั่งซื้อ? กดปุ่มด้านล่าง:", reply_markup=InlineKeyboardMarkup(keyboard))
         return ConversationHandler.END
     else:
-        await update.message.reply_text("ยังไม่มีข้อความโปรสำหรับตัวเลือกนี้ หรือ พิมพ์ 'IOS' / 'AD' เท่านั้น")
+        await update.message.reply_text("ยังไม่มีข้อความโปรสำหรับตัวเลือกนี้ หรือพิมพ์ 'IOS' / 'AD' เท่านั้น")
         return CHOOSING
+
+# fallback / unknown
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("พิมพ์ 'rov', 'ฟีฟาย' หรือ 'pubg' เพื่อเริ่มครับ")
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # /start
     app.add_handler(CommandHandler("start", start))
 
-    # ConversationHandler สำหรับ rov / ฟีฟาย / pubg -> เลือก IOS/AD
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex(re.compile(r"^(rov|ฟีฟาย|pubg)$", re.IGNORECASE)), start_choice)],
+        entry_points=[
+            MessageHandler(filters.Regex(re.compile(r"^(rov|ฟีฟาย|pubg|ff)$", re.IGNORECASE)), start_choice)
+        ],
         states={
             CHOOSING: [
                 MessageHandler(filters.Regex(re.compile(r"^(ios|ad)$", re.IGNORECASE)), choose_platform)
             ]
         },
-        fallbacks=[],
+        fallbacks=[MessageHandler(filters.ALL, unknown)],
     )
     app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, unknown))
 
-    # Run bot (polling)
     app.run_polling()
 
 if __name__ == "__main__":
