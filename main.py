@@ -9,14 +9,15 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 
+# สร้าง Client
 app = Client("my_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
 
 # ข้อมูลโปร
 PRO_DATA = {
-    "rov_ios": "🛒 โปร ROV IOS\nราคา: 30-700💸\nลิงก์ Telegram: https://t.me/yourchannel",
-    "rov_ad": "🛒 โปร ROV AD\nราคา: 20-299💸\nลิงก์ Telegram: https://t.me/yourchannel",
-    "ff_ios": "🛒 โปร ฟีฟาย IOS\nราคา: 100-750฿\nลิงก์ Telegram: https://t.me/yourchannel",
-    "ff_ad": "🛒 โปร ฟีฟาย AD\nราคา: 20-500💸\nลิงก์ Telegram: https://t.me/yourchannel",
+    "rov_ios": "🛒 โปร ROV IOS\nราคา: 30-700💸\nฟังก์ชัน: ESP, โชว์เลือด, กันแบน ...\nลิงก์ Telegram: https://t.me/yourchannel",
+    "rov_ad": "🛒 โปร ROV AD\nราคา: 20-299💸\nฟังก์ชัน: Hack Map, Auto Punish ...\nลิงก์ Telegram: https://t.me/yourchannel",
+    "ff_ios": "🛒 โปร ฟีฟาย IOS\nราคา: 100-750฿\nฟังก์ชัน: Aimbot, ESP ...\nลิงก์ Telegram: https://t.me/yourchannel",
+    "ff_ad": "🛒 โปร ฟีฟาย AD\nราคา: 20-500💸\nฟังก์ชัน: AimKill, Ghost Hack ...\nลิงก์ Telegram: https://t.me/yourchannel",
 }
 
 # /start
@@ -30,8 +31,8 @@ async def start(client, message):
     ])
     await message.reply("เลือกโปรเกมที่คุณต้องการ:", reply_markup=keyboard)
 
-# ตอบข้อความทั่วไป (ไม่ใช่คำสั่ง)
-@app.on_message(filters.text & ~filters.command())
+# ข้อความทั่วไป (ไม่ต้องกรอง ~filters.command)
+@app.on_message(filters.text)
 async def reply_text(client, message):
     text = message.text.lower()
     if "rov" in text:
@@ -50,4 +51,5 @@ async def button(client, callback_query):
     else:
         await callback_query.answer("ไม่พบข้อมูลโปรนี้", show_alert=True)
 
+# รันบอท
 app.run()
